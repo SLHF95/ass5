@@ -7,12 +7,15 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(pacman)
+p_load(lmerTest, ggplot2, metafor, dplyr)
 ```
 
 ```{r}
-
+getwd()
+locpath = getwd()
+setwd(locpath)
 ```
-
 
 # Building on the shoulders of giants: meta-analysis
 
@@ -20,8 +23,86 @@ knitr::opts_chunk$set(echo = TRUE)
 
 1. What is the current evidence for distinctive patterns of pitch mean and pitch sd in schizophrenia? Report how many papers report quantitative estimates, your method to analyze them, the estimated effect size of the difference (mean effect size and standard error for pitch mean, same for pitch sd) and forest plots representing it. 
 
+```{r}
+data = read.csv("Data.csv", sep = ";")
+```
+
+```{r}
+pitchmean = escalc('SMD', n1i = SampleSizeSchizo, n2i = SampleSizeContros, m1i = PitchMeanSchizo, m2i = PitchMeanControls, sd1i = PitchMeanSchizoSD, sd2i = PitchMeanControlsSD, data = data)
+
+pitchsd = escalc('SMD', n1i = SampleSizeSchizo, n2i = SampleSizeContros, m1i = PitchSDSchizo, m2i = PitchSDControls, sd1i = PitchSDSchizoSD, sd2i = PitchSDControlsSD, data = data)
+
+```
+
+```{r}
+meanmodel = lmer(yi ~ 1 + (1|Article), weights = 1/vi, data = pitchmean, control = lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore"))
+summary(meanmodel)
+
+sdmodel = lmer(yi ~ 1 + (1|Article), weights = 1/vi, data = pitchsd, control = lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore"))
+summary(sdmodel)
+```
+
+```{r}
+m1 = rma(yi, vi, data = pitchmean, slab = Article)
+forest(m1)
+
+m2 = rma(yi, vi, data = pitchsd, slab = Article)
+forest(m2) 
+```
+
+
 2. Do the results match your own analysis from Assignment 3? If you add your results to the meta-analysis, do the estimated effect sizes change? Report the new estimates and the new forest plots.
 
+need the mean and sd
+take the mean of the mean and sd 
+and the sd of the mean and sd
+for each group:
+
+```{r}
+resultsDF = read.csv("final_rqa.csv")
+
+SampleSizeSchizo = length(unique(resultsDF$participant[resultsDF$diagnosis == "schizophrenia"]))
+SampleSizeContros = length(unique(resultsDF$participant[resultsDF$diagnosis == "control"]))
+
+PitchMeanControls = mean(resultsDF$mean[resultsDF$diagnosis == "control"])
+PitchMeanSchizo = mean(resultsDF$mean[resultsDF$diagnosis == "schizophrenia"])
+PitchMeanControlsSD = sd(resultsDF$mean[resultsDF$diagnosis == "control"])
+PitchMeanSchizoSD = sd(resultsDF$mean[resultsDF$diagnosis == "schizophrenia"])
+
+PitchSDControls = mean(resultsDF$stdDev[resultsDF$diagnosis == "control"])
+PitchSDSchizo = mean(resultsDF$stdDev[resultsDF$diagnosis == "schizophrenia"])
+PitchSDControlsSD = sd(resultsDF$stdDev[resultsDF$diagnosis == "control"])
+PitchSDSchizoSD = sd(resultsDF$stdDev[resultsDF$diagnosis == "schizophrenia"])
+Article = "Assignment3"
+Year = 2017
+
+Assignment3 = data.frame(Article, Year, SampleSizeSchizo, SampleSizeContros, PitchMeanControls, PitchMeanControlsSD, PitchMeanSchizo, PitchMeanSchizoSD, PitchSDControls, PitchSDControlsSD, PitchSDSchizo, PitchSDSchizoSD)
+
+data3 = rbind(data, Assignment3)
+```
+
+```{r}
+pitchmean1 = escalc('SMD', n1i = SampleSizeSchizo, n2i = SampleSizeContros, m1i = PitchMeanSchizo, m2i = PitchMeanControls, sd1i = PitchMeanSchizoSD, sd2i = PitchMeanControlsSD, data = data3)
+
+pitchsd1 = escalc('SMD', n1i = SampleSizeSchizo, n2i = SampleSizeContros, m1i = PitchSDSchizo, m2i = PitchSDControls, sd1i = PitchSDSchizoSD, sd2i = PitchSDControlsSD, data = data3)
+
+```
+
+```{r}
+meanmodel1 = lmer(yi ~ 1 + (1|Article), weights = 1/vi, data = pitchmean1, control = lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore"))
+summary(meanmodel1)
+
+sdmodel1 = lmer(yi ~ 1 + (1|Article), weights = 1/vi, data = pitchsd1, control = lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore"))
+summary(sdmodel1)
+```
+
+```{r}
+m1_1 = rma(yi, vi, data = pitchmean1, slab = Article)
+forest(m1_1)
+
+m2_1 = rma(yi, vi, data = pitchsd1, slab = Article)
+forest(m2_1) 
+```
 3. Assess the quality of the literature: report and comment on heterogeneity of the studies (tau, I2), on publication bias (funnel plot), and on influential studies.
 
 ## Tips on the process to follow:
